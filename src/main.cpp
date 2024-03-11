@@ -2,6 +2,9 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include "loc.h"
+
+using namespace H;
 
 static const auto usage =
 "Usage: h [options] file\n"
@@ -55,12 +58,19 @@ int main(int argc, char** argv) {
                 //Lexer lex("<stdin>", std::cin);
 
                 //tokenize
+
+                
                 
             } else {
                 //std::ifstream ifs(file);
                 //Lexer lex(file, ifs);
 
                 //tokenize
+            }
+
+            if (num_errors != 0) {
+            std::cerr << num_errors << " error(s) encountered" << std::endl;
+            return EXIT_FAILURE;
             }
 
         }
