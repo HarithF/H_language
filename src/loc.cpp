@@ -17,11 +17,11 @@ std::ostream& operator<<(std::ostream& o, const Pos& pos) {
 
 std::ostream& operator<<(std::ostream& o, const Loc& loc) {
     o << loc.file << ":" << loc.begin;
-    if (loc.begin.row != loc.finis.row) {
-        o << "-" << loc.finis;
+    if (loc.begin.row != loc.finish.row) {
+        o << "-" << loc.finish;
     } else {
-        if (loc.begin.col != loc.finis.col)
-            o << "-" << loc.finis.col;
+        if (loc.begin.col != loc.finish.col)
+            o << "-" << loc.finish.col;
     }
 
     return o;
