@@ -18,4 +18,4 @@ OPTIONS, ARGUMENTS:
 Use "-" as <file> to output to stdout.
 ```
 
-Full description of the C99 specs[C99 specs](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf).
+Full description of the [C99 specs](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf).
