@@ -1,4 +1,4 @@
-A simple C-like toy language written in C++
+A simple C-like toy language written in C++ which implements a subset of c99
 
 
 ## Usage
@@ -17,3 +17,5 @@ OPTIONS, ARGUMENTS:
 
 Use "-" as <file> to output to stdout.
 ```
+
+Full description of the C99 specs[C99 specs](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf).

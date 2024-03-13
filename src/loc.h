@@ -33,7 +33,8 @@ struct Loc {
     Pos begin;
     Pos finish;
 
-    std::ostream& err() const;
+    std::ostream& err();
+    std::string endErr() const;
 };
 
 std::ostream& operator<<(std::ostream&, const Pos&);

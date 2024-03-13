@@ -6,9 +6,14 @@ namespace H {
 
 int num_errors = 0;
 
-std::ostream& Loc::err() const {
+std::ostream& Loc::err() {
     ++num_errors;
-    return std::cerr << (*this) << ": error: ";
+    this->begin = Pos(this->begin.row, this->begin.col);
+    return std::cerr << "\033[1;31m" << (*this) << ": error: ";
+}
+
+std::string Loc::endErr() const { //reset error encoding
+    return "\033[0m\n";
 }
 
 std::ostream& operator<<(std::ostream& o, const Pos& pos) {
@@ -17,12 +22,12 @@ std::ostream& operator<<(std::ostream& o, const Pos& pos) {
 
 std::ostream& operator<<(std::ostream& o, const Loc& loc) {
     o << loc.file << ":" << loc.begin;
-    if (loc.begin.row != loc.finish.row) {
-        o << "-" << loc.finish;
-    } else {
-        if (loc.begin.col != loc.finish.col)
-            o << "-" << loc.finish.col;
-    }
+    //if (loc.begin.row != loc.finish.row) {
+    //    o << "-" << loc.finish;
+    //} else {
+    //    if (loc.begin.col != loc.finish.col)
+    //        o << "-" << loc.finish.col;
+    // }
 
     return o;
 }

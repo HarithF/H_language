@@ -1,6 +1,6 @@
 BUILDDIR ?= build
 CFG      ?= debug
-NAME     ?= lam
+NAME     ?= H
 SRCDIR   ?= src
 
 all:

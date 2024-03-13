@@ -2,7 +2,7 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
-#include "loc.h"
+#include "lexer.h"
 
 using namespace H;
 
@@ -55,17 +55,24 @@ int main(int argc, char** argv) {
 
         if(tokenize) {
             if (strcmp("-", file) == 0) {
-                //Lexer lex("<stdin>", std::cin);
 
-                //tokenize
+                Lexer lex("<stdin>", std::cin);
 
-                
-                
+                H::Tok t;
+                do {
+                    t = lex.lex();
+                    std::cout << "in main: " << t << std::endl;
+
+                } while(strcmp(Tok::tag2str(t.tag()), "<eof>") != 0);
             } else {
-                //std::ifstream ifs(file);
-                //Lexer lex(file, ifs);
+                std::ifstream ifs(file);
+                Lexer lex(file, ifs);
 
-                //tokenize
+                H::Tok t;
+                do {
+                    t = lex.lex();
+                    if(t.tag() != Tok::Tag::M_EoF) std::cout << t.loc() << ": " << t << std::endl;
+                } while(strcmp(Tok::tag2str(t.tag()), "<eof>") != 0);
             }
 
             if (num_errors != 0) {
