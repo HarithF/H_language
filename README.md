@@ -1,4 +1,4 @@
-A simple C-like toy language written in C++ which implements a subset of c99
+A C-like toy language written in C++ which implements a subset of c99
 
 
 ## Usage
