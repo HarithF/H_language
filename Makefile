@@ -1,6 +1,6 @@
 BUILDDIR ?= build
 CFG      ?= debug
-NAME     ?= H
+NAM     ?= H
 SRCDIR   ?= src
 
 all:
@@ -11,10 +11,12 @@ all:
 Q ?= @
 
 BINDIR := $(BUILDDIR)/$(CFG)
-BIN    := $(BINDIR)/$(NAME)
+BIN    := $(BINDIR)/$(NAM)
 SRC    := $(sort $(wildcard $(SRCDIR)/*.cpp))
 OBJ    := $(SRC:$(SRCDIR)/%.cpp=$(BINDIR)/%.o)
 DEP    := $(OBJ:%.o=%.d)
+
+
 
 CFLAGS   := -Wall -W $(CFLAGS)
 CXXFLAGS += $(CFLAGS) -std=c++17
