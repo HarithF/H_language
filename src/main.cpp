@@ -1,8 +1,9 @@
-
 #include <cstring>
 #include <iostream>
 #include <fstream>
+
 #include "lexer.h"
+#include "parser.h"
 
 using namespace H;
 
@@ -48,7 +49,7 @@ int main(int argc, char** argv) {
                 throw std::logic_error("multiple input files given");
             }
         }
-
+        //
         if (file == nullptr)
             throw std::logic_error("no input file given");
 

@@ -10,12 +10,14 @@ USAGE:
 Display usage information.
 
 OPTIONS, ARGUMENTS:
-  -?, -h, --help
-  -d, --dump              Dumps the let program again.
-  -e, --eval              Evaluate the let program.
-  <file>                  Input file.
+  -?,   -h, --help          display this help and exit
+  -v,   --version           display version info and exit
+  -t,   --tokenize          display all tokens
+  -p,   --parse             display syntactical errors while parsing if they exist
+  -ep,  --eval-parsing      display the parser run through the code
+  <file>                    Input file.
 
-Use "-" as <file> to output to stdout.
+  Hint: use '-' as file to read from stdin
 ```
 
 Full description of the C99 specs[C99 specs](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf).
