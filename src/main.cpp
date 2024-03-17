@@ -16,6 +16,7 @@ static const auto usage =
 "\t-l,\t--tokenize\tdisplay all tokens\n"
 "\t-ep,\t--eval-parsing\tdisplay the parser run through the code\n"
 "\t-p,\t--parse\t\tdisplay syntactical errors while parsing if they exist\n"
+"\t-pp,\t--print-ast\tdisplay a pretty printed version of the source code\n"
 "\nHint: use '-' as file to read from stdin.\n"
 ;
 
@@ -77,19 +78,25 @@ int main(int argc, char** argv) {
             }
 
             if (num_errors != 0) {
-            std::cerr << num_errors << " error(s) encountered" << std::endl;
+            std::cerr << "\033[1;31m" << "ALARM: " << num_errors << " error(s) encountered" << "\033[0m" << std::endl;
             return EXIT_FAILURE;
             }
 
         }
         else if ((parse||eval_parsing)) {
             if (strcmp("-", file) == 0) {
-                //Parser parser("<stdin>", std::cin, eval_parsing);
-                //parser.parse_prg();
+                Parser parser("<stdin>", std::cin, eval_parsing);
+                parser.parse_prg();
             } else {
-                //std::ifstream ifs(file);
-                //Parser parser(file, ifs, eval_parsing);
-                //parser.parse_prg();
+                std::ifstream ifs(file);
+                Parser parser(file, ifs, eval_parsing);
+                parser.parse_prg();
+            }
+
+
+            if (num_errors != 0) {
+                std::cerr << "\033[1;31m" << "ALARM: " << num_errors << " error(s) encountered" << "\033[0m" << std::endl;
+                return EXIT_FAILURE;
             }
 
 

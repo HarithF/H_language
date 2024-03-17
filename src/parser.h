@@ -10,14 +10,14 @@ namespace H {
 
 class Parser {
 public:
-    Parser(const char* file, std::istream& stream, bool evaluate_parsing, bool prettyPrint, bool meme);
+    Parser(const char* file, std::istream& stream, bool evaluate_parsing);
 
     void parse_prg();
 
 private:
     Ptr<Exp> parse_exp(const char* ctxt, Tok::Prec p = Tok::Prec::Bottom );
     Ptr<Exp> parse_primary_expr(const char* ctxt);
-    Ptr<Stmt> parse_stmt(const char* ctxt, bool labeledStmt=false);
+    Ptr<Stmt> parse_stmt(const char* ctxt, bool labeledStmt=false, bool nonblock=false);
 
 
     Ptrs<Exp> parse_expr_list(const char* ctxt);
@@ -51,9 +51,9 @@ private:
 
     // New Declarations
     Ptr<ExternalDeclaration> parse_external_declaration();
-    Ptr<SpecifierDeclarator> parse_specifier_declarator();
+    Ptr<SpecifierDeclarator> parse_specifier_declarator(bool inside_paramlist=false);
     Ptr<Specifier> parse_specifier();
-    Ptr<Declarator> parse_declarator();
+    Ptr<Declarator> parse_declarator(bool inside_paramlist=false);
     
 
 
