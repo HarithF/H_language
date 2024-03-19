@@ -1043,6 +1043,138 @@ class ErrDecl : public ExternalDeclaration {
 };
 
 
+//! =================================================
+//! ============= Semantic Analysis =================
+//! =================================================
 
-}
+class Sema {
+    public:
+        Sema(){
+            push();    //fill with first empty map (global scope)
+        }
+        virtual ~Sema() {}
+
+        void addDeclaration(SpecifierDeclarator* specifierDeclarator) {
+            std::string name = specifierDeclarator->name();
+            //Type* type = specifierDeclarator->type();
+
+            if (lookup(name, true) != nullptr) {
+                specifierDeclarator->declarator()->loc().err() << "Redeclaration of variable '" << name << "'!" << specifierDeclarator->declarator()->loc().endErr();     // TODO: How to emit error??
+                return;
+            }
+            
+            if (name != "") {
+                //std::cout << "Name: " << name << std::endl;
+                //std::cout << "Type: " << type << std::endl;
+                hashmaps_.back().insert(std::pair<std::string,SpecifierDeclarator*>(specifierDeclarator->name(),specifierDeclarator));
+                //std::cout << "New size of most-inner scope: " << hashmaps_.back().size() << std::endl;
+            } else {
+                //std::cout << "Declaration without name -> no adding to scope" << std::endl;
+            }
+            
+        }
+        void push() { 
+            hashmaps_.emplace_back(std::map<std::string, SpecifierDeclarator*>()); 
+            struct_definitions_.emplace_back(std::map<std::string, std::map<std::string, SpecifierDeclarator*>>());
+        }
+        void pop() { 
+            hashmaps_.pop_back(); 
+            struct_definitions_.pop_back();
+        }
+
+        SpecifierDeclarator* lookup(std::string name, bool checkCurrentLvl = false) {
+            for (size_t i = hashmaps_.size()-1; i<=hashmaps_.size()-1; i--)
+            {
+                if (hashmaps_[i].find(name) != hashmaps_[i].end()) return hashmaps_[i][name];
+                else if (checkCurrentLvl) break;
+            }
+            return nullptr;                                                 // TODO: Maybe this is not a good idea ...
+        }
+        
+        LabeledStmt* lookupLabel(std::string name){
+            if (labels.find(name) != labels.end()) return labels[name];
+            else return nullptr;
+        }
+
+        std::map<std::string, SpecifierDeclarator*> lookupStruct(std::string name) {
+            for (size_t i = struct_definitions_.size()-1; i<=struct_definitions_.size()-1; i--)
+            {
+                if (struct_definitions_[i].find(name) != struct_definitions_[i].end()) return struct_definitions_[i][name];
+            }
+            return std::map<std::string, SpecifierDeclarator*>();
+        }
+
+        SpecifierDeclarator* lookupMember(std::string structName, std::string memberName) {
+            auto structDefinition = lookupStruct(structName);
+            if (structDefinition.find(memberName) != structDefinition.end()) return structDefinition[memberName];
+            return nullptr;                                                 
+        }
+
+        bool structDefined(std::string name){
+            for (size_t i = struct_definitions_.size()-1; i<=struct_definitions_.size()-1; i--)
+            {
+                if (struct_definitions_[i].find(name) != struct_definitions_[i].end()) return true;
+            }
+            return false;
+        }
+
+
+        void addStructDefinition(StructSpecifier* structSpecif){
+            std::string name = structSpecif->structIdentifierString();
+            Tok nameTok = structSpecif->structIdentifier();
+
+            if (name == "") return;
+            if (structDefined(name) && structSpecif->declarationListSet()) nameTok.loc().err() << "Redeclaration of struct " << name << "!" << nameTok.loc().endErr();
+            if (!structDefined(name) && !structSpecif->declarationListSet()) nameTok.loc().err() << "Storage size of '" << name << "' unknown!" << nameTok.loc().endErr();
+
+            if (structDefined(name) && !structSpecif->declarationListSet()) return;
+
+            std::map<std::string, SpecifierDeclarator*> structDefinition;
+            for (size_t i = 0; i < structSpecif->structDeclarationList().size(); i++)
+            {
+                SpecifierDeclarator* member = structSpecif->structDeclaration(i);
+                std::string member_name = member->name();
+                if (member_name == "") {
+                    member->loc().err() << "Member does not have a name!" << member->loc().endErr();
+                    continue;
+                }
+                if (structDefinition.find(member_name) != structDefinition.end()) {
+                    member->declarator()->loc().err() << "Duplicate member '" << member_name << "'!" << member->loc().endErr();
+                    continue;
+                }
+                //Type* member_type = member->type();
+                structDefinition.insert(std::pair<std::string,SpecifierDeclarator*>(member_name,member));
+            }
+
+            //if (structDefinition.size() == 0) structSpecif->structIdentifier().loc().err() << "Struct '"<< name <<"' has no members!" << structSpecif->structIdentifier().loc().endErr();
+            
+            struct_definitions_.back().insert(std::pair<std::string, std::map<std::string, SpecifierDeclarator*>>(name, structDefinition));
+        }
+
+
+        Type* error_type() { return new ErrorType(); }
+
+        size_t size() const { return hashmaps_.size(); }
+        std::vector<std::map<std::string, SpecifierDeclarator*>> hashmap() const { return hashmaps_; }
+
+        ExternalDeclaration* external_declaration() const {return external_declaration_; }
+        void external_declaration(ExternalDeclaration* exD) { external_declaration_ = exD; }
+
+        WhileStmt* loop() const { return loop_; }
+        void setLoop(WhileStmt* newLoop) { loop_ = newLoop; }
+
+
+
+    private:
+        std::vector<std::map<std::string, SpecifierDeclarator*>> hashmaps_;         // List of Hashmaps with <key=name | value=pointer to declaration>
+        std::vector<std::map<std::string, std::map<std::string, SpecifierDeclarator*>>> struct_definitions_;
+        ExternalDeclaration* external_declaration_ = nullptr;
+        WhileStmt* loop_ = nullptr;
+
+};
+
+
+
+
+};
 #endif

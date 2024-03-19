@@ -43,6 +43,168 @@ void newIndentDumpStmt(Stmt* statement, int temporaryIndentAdjust = 0)
 //! ========================================================================================================
 
 
+void TranslationUnit::check(Sema &sema) {
+    for (size_t i = 0; i < num_ext_declarations(); i++) {
+        external_declaration(i)->check(sema);
+    }     
+}
+
+//! =================================================
+//! ================ Declarations ===================
+//! =================================================
+
+void ExternalDeclaration::check(Sema &sema) {
+    if (specifierDeclarator() == nullptr) return;
+    auto typeString = specifierDeclarator()->typeString();
+    //auto type = specifierDeclarator()->type();
+    auto name = specifierDeclarator()->name();
+    //bool definingStruct = false;  
+
+    if (typeString=="struct"){
+        StructSpecifier* structSpecif = dynamic_cast<StructSpecifier*>(specifierDeclarator()->specifier());
+        std::string structIdentifier = structSpecif->structIdentifierString();
+        
+        //if (structSpecif->num_structDeclarations() == 0) loc().err() << "Struct has no members!" << loc().endErr();
+
+        if (sema.structDefined(structIdentifier) && structSpecif->declarationListSet()) loc().err() << "Redeclaration of struct " << structIdentifier << "!" << loc().endErr();
+        if (!sema.structDefined(structIdentifier) && !structSpecif->declarationListSet() && name!="") loc().err() << "Storage size of '" << name << "' unknown!" << loc().endErr();
+
+        if (!sema.structDefined(structIdentifier) && structSpecif->declarationListSet()) sema.addStructDefinition(structSpecif);
+        if (!structSpecif->declarationListSet() && name=="") loc().err() << "External declarations should declare at least one declarator!" << loc().endErr();
+        if (!sema.structDefined(structIdentifier) && name=="") loc().err() << "Unnamed struct that defines no instances!" << loc().endErr();
+    }
+
+    if (specifierDeclarator()->declarator() == nullptr && specifierDeclarator()->typeString()!="struct"){
+        loc().err() << "External declarations should declare at least one declarator!" << loc().endErr();
+        return;
+    }
+
+    sema.addDeclaration(specifierDeclarator());                                            //  Declaration to the current scope
+
+    
+    if (functionBody()!=nullptr) {                                              // If Declaration is in fact a Function Definition
+        sema.external_declaration(this);
+        
+        CompoundStmt* compoundFunctionBody = dynamic_cast<CompoundStmt*>(functionBody());
+        const Ptrs<SpecifierDeclarator>& paramList = specifierDeclarator()->parameterList();
+
+        for (size_t i = 0; i < paramList.size(); i++)
+        {
+            auto param = paramList[i].get();
+            if (param->name() == "" && param->typeString()!="void") param->loc().err() << "Parameter name ommitted!" << param->loc().endErr(); 
+        }
+        
+        sema.external_declaration(this);                                        // Remember the current  
+
+        compoundFunctionBody->check(sema);
+        
+        sema.external_declaration(nullptr);
+    }
+
+
+}
+
+
+//! =================================================
+//! ================ Statements =====================
+//! =================================================
+
+void Declaration::check(Sema &sema) {
+    sema.addDeclaration(specifierDeclarator());                                            //  Declaration to the current scope
+    if (specifierDeclarator()->typeString()=="struct") sema.addStructDefinition(dynamic_cast<StructSpecifier*>(specifierDeclarator()->specifier()));
+}
+
+void ExpressionStmt::check(Sema &sema) {
+    exp()->check(sema);
+}
+
+void EmptyReturnStmt::check(Sema &sema) {UNUSED(sema);}
+
+void ReturnStmt::check(Sema &sema) {
+    Type* returnType = exp()->check(sema);
+    auto function = sema.external_declaration();
+    auto specDecl = function->specifierDeclarator();
+    if(specDecl){
+        auto specDeclType = specDecl->type();
+        if (specDeclType && dynamic_cast<FunctionType*>(specDeclType)){
+            FunctionType* functionType = dynamic_cast<FunctionType*>(specDeclType);
+            if (functionType->returnType()) {
+                Type* functionReturnType = functionType->returnType();
+
+                if (returnType && functionReturnType->str() != returnType->str()) 
+                    loc().err() << "Wrong return type (got type " << returnType->str() << ", expected type "<< functionReturnType->str() << ")!" << loc().endErr();
+            }
+        }
+    }
+}
+
+void GoToStmt::check(Sema &sema) {
+    if (sema.lookupLabel(gotoLabel())==nullptr) loc().err() << "Label " << gotoLabel() << " not declared!" << loc().endErr();
+}
+
+void BreakStmt::check(Sema &sema) {
+    if (sema.loop() == nullptr) loc().err() << "'Break' outside of loop!" << loc().endErr();
+}
+
+void ContinueStmt::check(Sema &sema) {
+    if (sema.loop() == nullptr) loc().err() << "'Continue' outside of loop!" << loc().endErr();
+}
+
+void WhileStmt::check(Sema &sema) {
+    Type* conditionType = condition()->check(sema);
+    if (!conditionType->isScalar()) {
+        loc().err() << "Condition of While-Statement has to be scalar!" << loc().endErr();
+    }
+    auto oldLoop = sema.loop();
+    sema.setLoop(this);
+    loop()->check(sema);
+    sema.setLoop(oldLoop);
+}
+
+void IfElseStmt::check(Sema &sema) {
+    Type* conditionType = condition()->check(sema);
+    if (!conditionType->isScalar()) {
+        loc().err() << "Condition of If-Statement has to be scalar!" << loc().endErr();
+    }
+    consequence()->check(sema);
+    alternative()->check(sema);
+}
+
+void IfStmt::check(Sema &sema) {
+    Type* conditionType = condition()->check(sema);
+    if (!conditionType->isScalar()) {
+        loc().err() << "Condition of If-Statement has to be scalar!" << loc().endErr();
+    }
+    consequence()->check(sema);
+}
+
+void NullStmt::check(Sema &sema) {UNUSED(sema);}
+
+void CompoundStmt::check(Sema &sema) {
+    //std::cout << "=============== Start of new scope ===============";
+    sema.push();                                                                                    // Start new scope
+
+    if (sema.external_declaration() != nullptr && sema.size()==2) {                                 // Add Parameters only to function body environment
+        const Ptrs<SpecifierDeclarator>& paramList = sema.external_declaration()->specifierDeclarator()->parameterList();
+        for (size_t i = 0; i < paramList.size(); i++) {
+            auto param = paramList[i].get();
+            sema.addDeclaration(param);
+        }
+    }
+    
+    for(size_t ind=0; ind<num_blockItems(); ind++) {
+        blockItem(ind)->check(sema);
+    }
+    //std::cout << "=============== End of new scope ===============";
+
+    sema.pop(); // End new scope
+    //std::cout << std::endl;
+}
+
+void LabeledStmt::check(Sema &sema) {UNUSED(sema);}
+
+void ErrStmt::check(Sema &sema) {UNUSED(sema);}
+
 
 //! ========================================================================================================
 //! ================= Stream/Dump ==========================================================================
