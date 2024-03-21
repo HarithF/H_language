@@ -33,7 +33,7 @@ struct Loc {
     Pos begin;
     Pos finish;
 
-    std::ostream& err();
+    std::ostream& err(int offset=0);
     std::string endErr() const;
 };
 

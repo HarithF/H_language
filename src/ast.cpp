@@ -353,6 +353,132 @@ Type* MemberAccessExp::check(Sema &sema) {
 }
 
 
+Type* ArrayExp::check(Sema &sema) {
+    // TODO
+    auto arrayType = object()->check(sema);
+
+    return type_ = arrayType;    
+}
+
+Type* FuncCallExp::check(Sema &sema) {
+    auto idType = func()->check(sema);
+    if (dynamic_cast<ErrorType*>(idType)) return type_ = sema.error_type();
+    if (!dynamic_cast<FunctionType*>(idType)){
+        loc().err() << "Try to make a function call, but the used function is unknown (or at least can not be casted to function type)" << loc().endErr();
+        return type_ = sema.error_type();
+    }
+    auto funcType = dynamic_cast<FunctionType*>(idType);
+    auto returnType = funcType->returnType();
+    const Ptrs<Exp>& funcCallParamList = parameters();
+
+    // Check all params
+    int counter = 1;
+    for (auto&& param : funcCallParamList){
+        Type* paramType = param->check(sema);
+        if (!paramType->isComplete()){
+            loc().err() << "Arguments shall be of complete object type (got type " << paramType->str() << " for argument " << counter << ")!" << loc().endErr();
+        }
+        counter++;
+    }
+        
+    // Check whether returnType is okay
+    if (!dynamic_cast<VoidType*>(returnType) && !(returnType->isComplete() || dynamic_cast<ArrayType*>(returnType))) {
+        loc().err() << "Return type of function has to be void or a complete object type other than array (got type " << returnType->str() << ")!" << loc().endErr();
+    }
+
+    // Check whether the number and type of parameters matches the actual function definition
+    if (dynamic_cast<Identifier*>(func())){
+        std::string functionName = dynamic_cast<Identifier*>(func())->name();
+        auto functionDefinition = sema.lookup(functionName);
+        const Ptrs<SpecifierDeclarator>& funcDefParamList = functionDefinition->parameterList();
+
+        if (funcDefParamList[0].get()->typeString() == "void") {
+            if (funcCallParamList.size() != 0) funcCallParamList[0].get()->loc().err() << "Too many arguments in function call (got "<< funcCallParamList.size() << ", expected 0)!" << loc().endErr();
+        } else {
+            if (funcDefParamList.size() > funcCallParamList.size()) {
+                if (funcCallParamList.size() == 0) {
+                    loc().err(functionName.length()) << "Too few arguments in function call (got "<< funcCallParamList.size() << ", expected " << funcDefParamList.size() << ")!" << loc().endErr(); // TODO: Change error location to open or closed paranthesis
+                }
+                else funcCallParamList[funcCallParamList.size()].get()->loc().err() << "Too few arguments in function call (got "<< funcCallParamList.size() << ", expected " << funcDefParamList.size() << ")!" << loc().endErr();
+            }
+            else if (funcDefParamList.size() < funcCallParamList.size()) funcCallParamList[funcDefParamList.size()].get()->loc().err() << "Too many arguments in function call (got "<< funcCallParamList.size() << ", expected " << funcDefParamList.size() << ")!" << loc().endErr();
+            else {
+                for (size_t i = 0; i < funcCallParamList.size(); i++) {
+                    auto funcCallParam = funcCallParamList[i].get();
+                    Type* funcCallParamType = funcCallParam->check(sema);
+                    
+                    auto funcDefParam = funcDefParamList[i].get();
+                    
+                    if (funcCallParamType->str() != funcDefParam->type()->str()) {             
+                        funcCallParam->loc().err() << "Wrong parameter type (got type " << funcCallParamType->str() << ", expected type " << funcDefParam->type()->str() << ")!" << loc().endErr();
+                    }
+                }
+            }
+        }
+    }    
+
+    return type_ = returnType;
+}
+
+Type* SizeOfTypeExp::check(Sema &sema) {
+    if (typeString()=="char" || typeString()=="int") return type_ = new IntType();
+    else {
+        loc().err() << "sizeof operator shall not be applied to function or incomplete type (got " << typeString() << ")!" << loc().endErr();
+        return sema.error_type();
+    }
+}
+
+Type* SizeOfUnaryExp::check(Sema &sema) {
+    if (exp()->check(sema)->isComplete() && !dynamic_cast<FunctionType*>(exp()->check(sema))) return type_ = new IntType();
+    else {
+        loc().err() << "sizeof operator shall not be applied to expression with function or incomplete type (got " << exp()->check(sema)->str() << ")!" << loc().endErr();
+        return sema.error_type();
+    }
+}
+
+Type* PostfixExp::check(Sema &sema) {
+    auto postFixType = operand()->check(sema);
+
+    if (!postFixType->isScalar()) { //scalar = Integer Types and Pointer Type
+        loc().err() << "The operand of the postfix increment/decrement must be arithmetic or pointer type (got " << postFixType->str() << ")!" << loc().endErr();
+    }
+
+    return type_ = postFixType;
+}
+
+
+
+Type* Integer::check(Sema& sema) {
+    UNUSED(sema);
+    return new IntType();
+}
+
+Type* Character::check(Sema& sema) {
+    UNUSED(sema);
+    return new CharType();
+}
+
+Type* Literal::check(Sema& sema) {
+    UNUSED(sema);
+    return new PointerType(new CharType());
+}
+
+
+Type* Identifier::check(Sema &sema) {
+    setSpecifierDeclarator(sema.lookup(name()));
+    
+    if(specifierDeclarator() != nullptr) return specifierDeclarator()->type();
+    else loc().err() << "Identifier '" << name() << "' not declared!" << loc().endErr();
+    
+    return sema.error_type();
+}
+
+Type* ErrExp::check(Sema &sema) {
+    return sema.error_type();
+}
+
+
+
 //! ========================================================================================================
 //! ================= Stream/Dump ==========================================================================
 //! ========================================================================================================

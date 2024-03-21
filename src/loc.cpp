@@ -6,9 +6,9 @@ namespace H {
 
 int num_errors = 0;
 
-std::ostream& Loc::err() {
+std::ostream& Loc::err(int offset) {
     ++num_errors;
-    this->begin = Pos(this->begin.row, this->begin.col);
+    this->begin = Pos(this->begin.row, this->begin.col + offset);
     return std::cerr << "\033[1;31m" << (*this) << ": error: ";
 }
 
