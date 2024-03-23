@@ -14,13 +14,13 @@ namespace H {
     //! ================================ BASIC ================================
     //! =======================================================================
 
-    Parser::Parser(const char* file, std::istream& stream, bool evaluate_parsing)
+    Parser::Parser(const char* file, std::istream& stream, bool evaluate_parsing, bool prettyPrint)
         : lexer_(file, stream)
         , prev_(lexer_.loc())
         , ahead_(lexer_.lex())
         , two_ahead_(lexer_.lex())
         , evaluate_parsing_(evaluate_parsing)
-        //, prettyPrint_(prettyPrint)
+        , prettyPrint_(prettyPrint)
 
     {}
 
@@ -100,6 +100,11 @@ namespace H {
 
 
         if (prettyPrint() && num_errors==0) translationUnit->dump();
+
+        Sema sema = Sema();
+
+        if (prettyPrint() && num_errors==0) translationUnit->dump();
+        if (semanticCheck && num_errors==0) translationUnit->check(sema);
    
 
 

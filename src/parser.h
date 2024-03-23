@@ -10,7 +10,7 @@ namespace H {
 
 class Parser {
 public:
-    Parser(const char* file, std::istream& stream, bool evaluate_parsing);
+    Parser(const char* file, std::istream& stream, bool evaluate_parsing, bool prettyPrint);
 
     void parse_prg();
 

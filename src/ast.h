@@ -194,6 +194,16 @@ class ASTNode {
         Loc loc_;
 };
 
+class Stmt : public ASTNode{
+public:
+    Stmt(Loc loc)
+        : ASTNode(loc)
+    {}
+
+    virtual std::ostream& stream(std::ostream& o) const = 0;
+    virtual void check (Sema&) = 0;
+};
+
 class Exp : public ASTNode{
 public:
     Exp(Loc loc)
@@ -205,16 +215,6 @@ public:
 
 
     Type* type_;
-};
-
-class Stmt : public ASTNode{
-public:
-    Stmt(Loc loc)
-        : ASTNode(loc)
-    {}
-
-    virtual std::ostream& stream(std::ostream& o) const = 0;
-    virtual void check (Sema&) = 0;
 };
 
 
@@ -259,7 +259,6 @@ class PrimitiveSpecifier : public Specifier {                        // Class fo
         std::ostream& stream(std::ostream& o) const override;
 };
 
-
 class StructSpecifier : public Specifier {                           // Class for handling the struct specifier
     public:
         StructSpecifier(Loc loc, Tok type)
@@ -301,7 +300,6 @@ class StructSpecifier : public Specifier {                           // Class fo
 };
 
 
-
 //! =================================================
 //! ================= Declarator ====================
 //! =================================================
@@ -337,7 +335,8 @@ class NamedDeclarator : public Declarator {
         // Direct Getters
         Tok identifier() const {return identifier_; }
         std::string name() const { return identifier_.str(); }
-        const Ptrs<SpecifierDeclarator>& parameterList() const {return Ptrs<SpecifierDeclarator>(); };
+        Ptrs<SpecifierDeclarator> Specifier_Declarator_ = std::move(Ptrs<SpecifierDeclarator>());
+        const Ptrs<SpecifierDeclarator>& parameterList() const {return Specifier_Declarator_; };
 
         // AST-Functions
         std::ostream& stream(std::ostream& o) const;
@@ -359,7 +358,7 @@ class FunctionDeclarator : public Declarator {
 
         // Direct Getters
         Declarator* declarator() const { return declarator_.get(); }
-        std::string name() const { return declarator()->name(); }
+        std::string name() const { if (declarator()!=nullptr) return declarator()->name(); else return "";}
 
         const Ptrs<SpecifierDeclarator>& parameterList() const { return parameterList_; }
         size_t num_parameters() const { return parameterList_.size(); }
@@ -368,13 +367,12 @@ class FunctionDeclarator : public Declarator {
         // AST-Functions
         std::ostream& stream(std::ostream& o) const;
 
-        Type* type(Type* specifierType) const override { return new FunctionType( declarator_->type(specifierType)); }        
+        Type* type(Type* specifierType) const override { return new FunctionType(declarator_->type(specifierType)); }        
 
     private: 
         Ptr<Declarator> declarator_;
         Ptrs<SpecifierDeclarator> parameterList_;
 };
-
 
 class PointerDeclarator : public Declarator {
     public:
@@ -399,6 +397,128 @@ class PointerDeclarator : public Declarator {
     private: 
         Ptr<Declarator> declarator_;
 };
+
+
+//! =================================================
+//! ================= Base Stuff ====================
+//! =================================================
+
+
+class SpecifierDeclarator : public ASTNode {
+    public:
+        SpecifierDeclarator(Loc loc, Ptr<Specifier>&& specifier, Ptr<Declarator>&& declarator)
+        : ASTNode(loc)
+        , specifier_(std::move(specifier))
+        , declarator_(std::move(declarator))
+        {}
+
+        SpecifierDeclarator(Loc loc, Ptr<Specifier>&& specifier)
+        : ASTNode(loc)
+        , specifier_(std::move(specifier))
+        {}
+
+        // Direct Getter
+        Specifier* specifier() const { return specifier_.get(); }
+        Declarator* declarator() const { return declarator_.get(); }
+
+        // Indirect Getter
+        std::string name() const { if (declarator()!=nullptr) return declarator()->name(); else return "";}
+        //Type* type() const { return specifier()->type();}
+        Type* type() const { if(declarator()!=nullptr) return declarator()->type(specifier()->type()); else return specifier()->type(); }
+        std::string typeString() const { return specifier()->typeString();}
+        const Ptrs<SpecifierDeclarator>& parameterList() {return declarator()->parameterList(); };
+
+        // AST-Functions
+        std::ostream& stream(std::ostream& o) const override;
+
+    private:
+        Ptr<Specifier> specifier_;
+        Ptr<Declarator> declarator_;
+};
+
+class ExternalDeclaration : public ASTNode {
+    public:
+        ExternalDeclaration(Loc loc)
+        : ASTNode(loc)
+        {}
+
+        ExternalDeclaration(Loc loc, Ptr<SpecifierDeclarator>&& specifierDeclarator)
+        : ASTNode(loc)
+        , specifierDeclarator_(std::move(specifierDeclarator))
+        {}
+
+        ExternalDeclaration(Loc loc, Ptr<SpecifierDeclarator>&& specifierDeclarator, Ptr<Stmt>&& functionBody)
+        : ASTNode(loc)
+        , specifierDeclarator_(std::move(specifierDeclarator))
+        , functionBody_(std::move(functionBody))
+        {}
+
+        // Direct Getter
+        SpecifierDeclarator* specifierDeclarator() const { return specifierDeclarator_.get(); }
+        Stmt* functionBody() const { return functionBody_.get(); }
+
+        // AST-Functions
+        std::ostream& stream(std::ostream& o) const override;
+        void check(Sema&);
+
+    private:
+        Ptr<SpecifierDeclarator> specifierDeclarator_;
+        Ptr<Stmt> functionBody_;
+};
+
+class TranslationUnit : public ASTNode {
+    public:
+        TranslationUnit(Loc loc, Ptrs<ExternalDeclaration>&& external_declarations)
+            : ASTNode(loc)
+            , external_declarations_(std::move(external_declarations))
+        {}
+
+        // Direct Getter
+        const Ptrs<ExternalDeclaration>& external_declarations() const { return external_declarations_; }
+        size_t num_ext_declarations() const { return external_declarations_.size(); }
+        ExternalDeclaration* external_declaration(size_t i) const { return external_declarations_[i].get(); }
+
+
+        // AST-Function
+        std::ostream& stream(std::ostream& o) const override;
+        void check(Sema&);
+
+    private:
+        Ptrs<ExternalDeclaration> external_declarations_;
+};
+
+class Declaration : public Stmt {
+    public:
+        Declaration(Loc loc, Ptr<SpecifierDeclarator>&& specifierDeclarator)
+            : Stmt(loc)
+            , specifierDeclarator_(std::move(specifierDeclarator))
+        {}
+        Declaration(Loc loc)                                                // Empty Declaration for ErrDeclarations
+            : Stmt(loc)
+        {}
+
+        // Direct Getter
+        SpecifierDeclarator* specifierDeclarator() const { return specifierDeclarator_.get(); }
+
+        // Indirect Getter
+        std::string name() { return specifierDeclarator()->name(); }
+        Type* type() { return specifierDeclarator()->type(); }
+        std::string typeString() { return specifierDeclarator()->typeString(); }
+
+        // AST-Functions
+        std::ostream& stream(std::ostream&) const override; 
+        void check(Sema& sema) override;
+
+    private:
+        Ptr<SpecifierDeclarator> specifierDeclarator_;
+};
+
+
+//! =================================================
+//! ================ Declarations ===================
+//! =================================================
+
+
 
 //! =================================================
 //! ================ Statements =====================
@@ -604,124 +724,6 @@ class LabeledStmt : public Stmt {
         Tok label_;
         Ptr<Stmt> statement_;
 };
-
-
-//! =================================================
-//! ================= Base Stuff ====================
-//! =================================================
-
-
-class SpecifierDeclarator : public ASTNode {
-    public:
-        SpecifierDeclarator(Loc loc, Ptr<Specifier>&& specifier, Ptr<Declarator>&& declarator)
-        : ASTNode(loc)
-        , specifier_(std::move(specifier))
-        , declarator_(std::move(declarator))
-        {}
-
-        SpecifierDeclarator(Loc loc, Ptr<Specifier>&& specifier)
-        : ASTNode(loc)
-        , specifier_(std::move(specifier))
-        {}
-
-        // Direct Getter
-        Specifier* specifier() const { return specifier_.get(); }
-        Declarator* declarator() const { return declarator_.get(); }
-
-        // Indirect Getter
-        std::string name() const { if (declarator()!=nullptr) return declarator()->name(); else return "";}
-        //Type* type() const { return specifier()->type();}
-        Type* type() const { if(declarator()!=nullptr) return declarator()->type(specifier()->type()); else return specifier()->type(); }
-        std::string typeString() const { return specifier()->typeString();}
-        const Ptrs<SpecifierDeclarator>& parameterList() {return declarator()->parameterList(); };
-
-        // AST-Functions
-        std::ostream& stream(std::ostream& o) const override;
-
-    private:
-        Ptr<Specifier> specifier_;
-        Ptr<Declarator> declarator_;
-};
-
-class ExternalDeclaration : public ASTNode {
-    public:
-        ExternalDeclaration(Loc loc)
-        : ASTNode(loc)
-        {}
-
-        ExternalDeclaration(Loc loc, Ptr<SpecifierDeclarator>&& specifierDeclarator)
-        : ASTNode(loc)
-        , specifierDeclarator_(std::move(specifierDeclarator))
-        {}
-
-        ExternalDeclaration(Loc loc, Ptr<SpecifierDeclarator>&& specifierDeclarator, Ptr<Stmt>&& functionBody)
-        : ASTNode(loc)
-        , specifierDeclarator_(std::move(specifierDeclarator))
-        , functionBody_(std::move(functionBody))
-        {}
-
-        // Direct Getter
-        SpecifierDeclarator* specifierDeclarator() const { return specifierDeclarator_.get(); }
-        Stmt* functionBody() const { return functionBody_.get(); }
-
-        // AST-Functions
-        std::ostream& stream(std::ostream& o) const override;
-        void check(Sema&);
-
-    private:
-        Ptr<SpecifierDeclarator> specifierDeclarator_;
-        Ptr<Stmt> functionBody_;
-};
-
-
-class TranslationUnit : public ASTNode {
-    public:
-        TranslationUnit(Loc loc, Ptrs<ExternalDeclaration>&& external_declarations)
-            : ASTNode(loc)
-            , external_declarations_(std::move(external_declarations))
-        {}
-
-        // Direct Getter
-        const Ptrs<ExternalDeclaration>& external_declarations() const { return external_declarations_; }
-        size_t num_ext_declarations() const { return external_declarations_.size(); }
-        ExternalDeclaration* external_declaration(size_t i) const { return external_declarations_[i].get(); }
-
-
-        // AST-Function
-        std::ostream& stream(std::ostream& o) const override;
-        void check(Sema&);
-
-    private:
-        Ptrs<ExternalDeclaration> external_declarations_;
-};
-
-class Declaration : public Stmt {
-    public:
-        Declaration(Loc loc, Ptr<SpecifierDeclarator>&& specifierDeclarator)
-            : Stmt(loc)
-            , specifierDeclarator_(std::move(specifierDeclarator))
-        {}
-        Declaration(Loc loc)                                                // Empty Declaration for ErrDeclarations
-            : Stmt(loc)
-        {}
-
-        // Direct Getter
-        SpecifierDeclarator* specifierDeclarator() const { return specifierDeclarator_.get(); }
-
-        // Indirect Getter
-        std::string name() { return specifierDeclarator()->name(); }
-        Type* type() { return specifierDeclarator()->type(); }
-        std::string typeString() { return specifierDeclarator()->typeString(); }
-
-        // AST-Functions
-        std::ostream& stream(std::ostream&) const override; 
-        void check(Sema& sema) override;
-
-    private:
-        Ptr<SpecifierDeclarator> specifierDeclarator_;
-};
-
-
 
 //! =================================================
 //! ================ Expressions ====================
@@ -998,13 +1000,9 @@ class Literal : public Exp {
 };
 
 
-
-
 //! =================================================
-//! ============= Err / Exp-Stmt-Decl ===============
+//! ============= Error Exp/Stmt/Decl ===============
 //! =================================================
-
-
 class ErrExp : public Exp {
     public:
         ErrExp(Loc loc)
@@ -1017,7 +1015,6 @@ class ErrExp : public Exp {
     private:
         std::string name_;
 };
-
 
 class ErrStmt : public Stmt {
     public:
@@ -1041,6 +1038,8 @@ class ErrDecl : public ExternalDeclaration {
 
         std::ostream& stream(std::ostream& o) const override;
 };
+
+
 
 
 //! =================================================

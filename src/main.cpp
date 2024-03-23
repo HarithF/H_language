@@ -17,6 +17,7 @@ static const auto usage =
 "\t-ep,\t--eval-parsing\tdisplay the parser run through the code\n"
 "\t-p,\t--parse\t\tdisplay syntactical errors while parsing if they exist\n"
 "\t-pp,\t--print-ast\tdisplay a pretty printed version of the source code\n"
+"\t-c,\t--compile\t compiles the given source code\n"
 "\nHint: use '-' as file to read from stdin.\n"
 ;
 
@@ -28,6 +29,8 @@ int main(int argc, char** argv) {
         bool eval_parsing = false;
         bool parse = false;
         const char* file = nullptr;
+        bool prettyPrint = false;
+        bool compile = false;
 
         
 
@@ -42,8 +45,12 @@ int main(int argc, char** argv) {
                 tokenize = true;
             } else if (strcmp("-ep", argv[i]) == 0 || strcmp("--eval-parsing", argv[i]) == 0) {
                 eval_parsing = true;
+            } else if (strcmp("-pp", argv[i]) == 0 || strcmp("--print-ast", argv[i]) == 0) {
+                prettyPrint = true;
             } else if (strcmp("-p", argv[i]) == 0 || strcmp("--parse", argv[i]) == 0) {
                 parse = true;
+            } else if (strcmp("-c", argv[i]) == 0 || strcmp("--compile", argv[i]) == 0) {
+                compile = true;
             } else if (file == nullptr) {
                 file = argv[i];
             } else {
@@ -83,13 +90,13 @@ int main(int argc, char** argv) {
             }
 
         }
-        else if ((parse||eval_parsing)) {
+        else if ((parse||eval_parsing||prettyPrint) && !compile) {
             if (strcmp("-", file) == 0) {
-                Parser parser("<stdin>", std::cin, eval_parsing);
+                Parser parser("<stdin>", std::cin, eval_parsing, prettyPrint);
                 parser.parse_prg();
             } else {
                 std::ifstream ifs(file);
-                Parser parser(file, ifs, eval_parsing);
+                Parser parser(file, std::cin, eval_parsing, prettyPrint);
                 parser.parse_prg();
             }
 
