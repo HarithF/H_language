@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
         bool prettyPrint = false;
         bool compile = false;
 
+
         
 
         for (int i = 1; i != argc; ++i) {
@@ -96,7 +97,7 @@ int main(int argc, char** argv) {
                 parser.parse_prg();
             } else {
                 std::ifstream ifs(file);
-                Parser parser(file, std::cin, eval_parsing, prettyPrint);
+                Parser parser(file, ifs, eval_parsing, prettyPrint);
                 parser.parse_prg();
             }
 
